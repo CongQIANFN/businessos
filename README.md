@@ -1,5 +1,7 @@
 # BusinessOS
 
+English · [简体中文](README.zh-CN.md)
+
 BusinessOS is a small, versioned business runtime for people and AI agents. This preview demonstrates a rule change while existing business continues on the version it started with.
 
 ## Run the demo
