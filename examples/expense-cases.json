@@ -1,0 +1,6 @@
+{
+  "after": [
+    {"name": "expense.submit", "identity": "employee", "input": {"description": "Train ticket", "amount": 120}, "expect": {"status": "submitted", "amount": 120}},
+    {"name": "expense.submit", "identity": "employee", "input": {"description": "Invalid expense", "amount": 0}, "error": "input below minimum"}
+  ]
+}

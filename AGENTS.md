@@ -4,11 +4,15 @@ BusinessOS is a local preview of a business runtime shared by people and agents.
 
 ## Map
 
+- `bos` and `businessos/` are the local CLI and operation layer.
+- `docs/CLI.md` defines the supported command and artifact contract.
+- `tests/cli_acceptance.py` exercises fresh CLI processes; `run-cli-demo.sh` leaves a persistent demo instance.
+
 - `demo.py` and `run-demo.sh` provide the runnable demo.
 - `experiments/procurement/` contains the shared runtime, database fixture, purchase process, and mock supplier.
 - `experiments/builder/` contains catalog, draft, validation, and local publish operations.
 - `experiments/billing/` contains usage and invoice operations on the same runtime.
-- `.agents/skills/businessos-builder/` contains the optional coding-agent workflow.
+- `.agents/skills/businessos-builder/` and `.agents/skills/businessos-user/` contain the development and operation workflows.
 
 ## Conventions
 

@@ -61,22 +61,27 @@ class Runtime:
         with psycopg.connect(self.admin_dsn) as c:return c.execute("SELECT definition FROM releases WHERE current AND tenant IN (%s,'*') ORDER BY (tenant=%s) DESC LIMIT 1",(tenant,tenant)).fetchone()[0]
     def definition(self,rid,tenant='a'):
         with psycopg.connect(self.admin_dsn) as c:return c.execute("SELECT definition FROM releases WHERE release_id=%s AND tenant IN (%s,'*') ORDER BY (tenant=%s) DESC LIMIT 1",(rid,tenant,tenant)).fetchone()[0]
-    def publish(self,definition,token):
+    def publish(self,definition,token,expected_base=None):
         actor=self.actor(token)
         if actor['role']!='owner':raise Denied('publish permission')
-        return self._install(definition,actor['tenant'])
-    def _install(self,definition,tenant):
+        return self._install(definition,actor['tenant'],expected_base)
+    def _install(self,definition,tenant,expected_base=None):
         d=json.loads(json.dumps(definition));rid=d.setdefault('release_id','release-'+uuid.uuid4().hex)
         for cfg in d.get('actions',{}).values():
             if cfg['handler'] not in self.handlers:raise ValueError('unknown handler '+cfg['handler'])
         for code in d.get('extensions',{}).values():validate_expression(code)
         with psycopg.connect(self.admin_dsn) as c:
             c.execute('SELECT pg_advisory_xact_lock(hashtextextended(%s,0))',('release:'+tenant,))
+            if expected_base is not None:
+                from hashlib import sha256
+                live=c.execute("SELECT definition FROM releases WHERE current AND tenant IN (%s,'*') ORDER BY (tenant=%s) DESC LIMIT 1",(tenant,tenant)).fetchone()[0]
+                actual=sha256(json.dumps(live,sort_keys=True,separators=(',', ':')).encode()).hexdigest()
+                if actual!=expected_base:raise Conflict('stale base release')
             if tenant!='*' and c.execute("SELECT 1 FROM releases WHERE tenant='*' AND release_id=%s",(rid,)).fetchone():raise Conflict('tenant release cannot shadow global baseline ID')
             if c.execute('SELECT 1 FROM releases WHERE tenant=%s AND release_id=%s',(tenant,rid)).fetchone():raise Conflict('immutable release ID already exists')
             for name,obj in d.get('objects',{}).items():
                 columns=obj.get('columns',{}); q=ident(name)
-                if name in ('actors','releases','execution'):raise Denied('reserved runtime table')
+                if name in ('actors','releases','execution') or name.startswith('bos_'):raise Denied('reserved runtime table')
                 if set(columns)&set(BASE):raise Denied('cannot redefine runtime columns')
                 for field,typ in columns.items():
                     ident(field)
@@ -98,7 +103,10 @@ class Runtime:
     def _invoke(self,ctx,name,payload,internal=True):
         cfg=ctx.definition.get('actions',{}).get(name)
         if not cfg or ctx.actor['role'] not in cfg['roles'] or (cfg.get('internal') and not internal):raise Denied('action not permitted: '+name)
-        return self.handlers[cfg['handler']](ctx,payload)
+        previous=getattr(ctx,'action_name',None)
+        ctx.action_name=name
+        try:return self.handlers[cfg['handler']](ctx,payload)
+        finally:ctx.action_name=previous
     def action(self,name,token,payload,key,**kwargs):
         if kwargs or any(x in payload for x in ('release_id','actor','tenant_id','role')):raise Denied('client context/version override')
         actor=self.actor(token);d=self.current_definition(actor['tenant']);h=hashlib.sha256(json.dumps(payload,sort_keys=True).encode()).hexdigest()

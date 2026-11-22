@@ -19,3 +19,4 @@ fixture.json
 /experiments/**/results.json
 /experiments/builder/evidence/
 /experiments/builder/generated/change-package.json
+/.businessos/

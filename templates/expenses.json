@@ -1,0 +1,13 @@
+{
+  "modules": {"expenses": {"description": "Simple expense submission; amounts are whole CNY."}},
+  "objects": {"expense": {"columns": {"description": "text", "amount": "bigint", "status": "text"}}},
+  "actions": {
+    "expense.submit": {
+      "handler": "data.create", "object": "expense", "roles": ["owner", "employee", "agent"],
+      "description": "Submit an expense record. This starter does not implement approval or reimbursement.",
+      "input": {"type": "object", "properties": {"description": {"type": "string"}, "amount": {"type": "integer", "minimum": 1}}, "required": ["description", "amount"]},
+      "output": {"type": "object"}, "errors": ["Denied", "ValueError"], "defaults": {"status": "submitted"}
+    }
+  },
+  "queries": {}
+}
